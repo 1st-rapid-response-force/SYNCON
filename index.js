@@ -10,12 +10,14 @@ var program = require("commander"),
     _ = require("underscore"),
     async = require("async"),
     fs = require("fs-extra"),
+    child = require("child_process")
     crypto = require("crypto"),
     zlib = require("zlib")
  
 program
   .version("0.0.1")
-  .option("-key, --privatekey [key_path]", "The full length path specifier of the BIkey private key to sign files")
+  .option("-k, --keyname [key_name]", "The name of the key that will be generated to sign the modpack.")
+  .option("-t, --tools [tool_path]", "The path where the ARMA 3 tools are located.")
   .option("-o, --output [directory]", "The output directory where the final mod will be published.")
   .option("-i, --input [directory]", "The input directory where the individual mods files have been unpacked.")
   .parse(process.argv)
@@ -31,8 +33,12 @@ glob(program.input + "/**/*.{pbo,dll}", (err, files_to_process) => {
     
     fs.emptyDirSync(program.output)
     fs.ensureDirSync(path.resolve(program.output, "./addons"))
-
     let manifest = {}
+
+    // Generate key material
+    let result = child.execFileSync(path.resolve(program.tools, "./DSSignFile/DSCreateKey"), [program.keyname], {
+        cwd: program.output
+    })
 
     let operations = _.map(files_to_process, (file) => {
 
@@ -74,9 +80,25 @@ glob(program.input + "/**/*.{pbo,dll}", (err, files_to_process) => {
 
                 manifest[relative_output] = hash
 
-                console.log("File completed: " + relative_output + " with hash: " + hash)
+                if ( relative_path.endsWith(".pbo") ) {
+                    async.waterfall([
+                        (cb) => child.execFile(path.resolve(program.tools, "./DSSignFile/DSSignFile"), [path.resolve(program.output, program.keyname + ".biprivatekey"), output_file], {}, cb),
+                        (stdout, stderr, cb) => fs.readFile(output_file + "." + program.keyname + ".bisign", cb)
+                    ], (err, key_file) => {
+                        let key_hash_construct = crypto.createHash("sha256")
+                        key_hash_construct.update(key_file)
 
-                callback(null, hash)
+                        let key_digest = key_hash_construct.digest("base64")
+                        manifest[relative_output + "." + program.keyname + ".bisign"] = key_digest
+
+                        console.log("File completed: " + relative_output + " with hash: " + hash)
+                        callback(null, hash)
+                    })
+                } else {
+                    console.log("File completed: " + relative_output + " with hash: " + hash)
+                    callback(null, hash)
+                }
+
             })
         }
 
