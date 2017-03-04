@@ -11,8 +11,7 @@ var program = require("commander"),
     async = require("async"),
     fs = require("fs-extra"),
     child = require("child_process")
-    crypto = require("crypto"),
-    zlib = require("zlib")
+    crypto = require("crypto")
  
 program
   .version("0.0.1")
@@ -57,16 +56,15 @@ glob(program.input + "/**/*.{pbo,dll}", (err, files_to_process) => {
 
             let read_stream = fs.createReadStream(file),
                 outbound_stream = fs.createWriteStream(output_file),
-                hash_construct = crypto.createHash("sha256"),
-                zip_stream = zlib.createGzip()
+                hash_construct = crypto.createHash("sha256")
 
             // Build the hash
             read_stream.on("data", (data) => {
                 hash_construct.update(data)
             })
 
-            // Write the gziped file out to the output directory
-            read_stream.pipe(zip_stream).pipe(outbound_stream)
+            // Write the file out to the output directory
+            read_stream.pipe(outbound_stream)
 
             read_stream.on("end", () => {
                 let hash = hash_construct.digest("base64"),
@@ -96,7 +94,7 @@ glob(program.input + "/**/*.{pbo,dll}", (err, files_to_process) => {
                     })
                 } else {
                     console.log("File completed: " + relative_output + " with hash: " + hash)
-                    callback(null, hash)
+                    callback(nul, hash)
                 }
 
             })
