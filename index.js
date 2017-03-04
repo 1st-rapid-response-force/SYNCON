@@ -66,7 +66,7 @@ glob(program.input + "/**/*.{pbo,dll}", (err, files_to_process) => {
             // Write the file out to the output directory
             read_stream.pipe(outbound_stream)
 
-            read_stream.on("end", () => {
+            outbound_stream.on("finish", () => {
                 let hash = hash_construct.digest("base64"),
                     relative_output = path.relative(program.output, output_file)
                 
@@ -94,7 +94,7 @@ glob(program.input + "/**/*.{pbo,dll}", (err, files_to_process) => {
                     })
                 } else {
                     console.log("File completed: " + relative_output + " with hash: " + hash)
-                    callback(nul, hash)
+                    callback(null, hash)
                 }
 
             })
