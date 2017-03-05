@@ -1,5 +1,5 @@
 {
-  "name": "SYNCON",
+  "name": "syncon",
   "version": "1.0.0",
   "description": "SYNCON is the 1st RRFs modpack toolset designed to compile a release of the modpack.",
   "license": "MIT",
@@ -14,7 +14,7 @@
     "underscore": "^1.8.3"
   },
   "bin": {
-    "syncom-builder": "./scripts/build.js",
-    "syncom": "./scripts/download.js"
+    "syncon-builder": "./scripts/build.js",
+    "syncon": "./scripts/download.js"
   }
 }
