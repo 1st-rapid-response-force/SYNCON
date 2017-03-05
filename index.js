@@ -19,6 +19,7 @@ program
   .option("-t, --tools [tool_path]", "The path where the ARMA 3 tools are located.")
   .option("-o, --output [directory]", "The output directory where the final mod will be published.")
   .option("-i, --input [directory]", "The input directory where the individual mods files have been unpacked.")
+  .option("-n, --name [name]", "The name of the modpack in the Mod.cpp")
   .parse(process.argv)
  
 // Use a glob on the path to find all .pbo files in the directory
@@ -35,9 +36,39 @@ glob(program.input + "/**/*.{pbo,dll}", (err, files_to_process) => {
     let manifest = {}
 
     // Generate key material
-    let result = child.execFileSync(path.resolve(program.tools, "./DSSignFile/DSCreateKey"), [program.keyname], {
+    child.execFileSync(path.resolve(program.tools, "./DSSignFile/DSCreateKey"), [program.keyname], {
         cwd: program.output
     })
+
+    // Binarize the logo file and emit a mod.cpp
+    child.execFileSync(path.resolve(program.tools, "./ImageToPAA/ImageToPAA"), [path.resolve(program.input, "./logo.png"), path.resolve(program.output, "./logo.paa")], {
+        cwd: program.output
+    })
+
+    // Output the mod.cpp
+    fs.writeFileSync(path.resolve(program.output, "./mod.cpp"), 
+    `name = "${program.name}";
+    picture = "logo.paa";
+    actionName = "Website";
+    action = "https://1st-rrf.com";
+    tooltip = "${program.name}";
+    author = "1st Rapid Response Force";
+    `)
+
+    let binarized_logo = fs.readFileSync(path.resolve(program.output, "./logo.paa")),
+        mod_cpp = fs.readFileSync(path.resolve(program.output, "./mod.cpp"))
+
+    let logo_hash = crypto.createHash("sha256"),
+        mod_hash = crypto.createHash("sha256")
+
+    logo_hash.update(binarized_logo)
+    mod_hash.update(mod_cpp)
+
+    manifest["logo.paa"] = logo_hash.digest("hex")
+    manifest["mod.cpp"] = mod_hash.digest("hex")
+
+    binarized_logo = null
+    mod_cpp = null
 
     let operations = _.map(files_to_process, (file) => {
 
@@ -67,7 +98,7 @@ glob(program.input + "/**/*.{pbo,dll}", (err, files_to_process) => {
             read_stream.pipe(outbound_stream)
 
             outbound_stream.on("finish", () => {
-                let hash = hash_construct.digest("base64"),
+                let hash = hash_construct.digest("hex"),
                     relative_output = path.relative(program.output, output_file)
                 
                 // Check if this file is a duplicate and if so whether it shares a hash with it's duplicate
@@ -86,7 +117,7 @@ glob(program.input + "/**/*.{pbo,dll}", (err, files_to_process) => {
                         let key_hash_construct = crypto.createHash("sha256")
                         key_hash_construct.update(key_file)
 
-                        let key_digest = key_hash_construct.digest("base64")
+                        let key_digest = key_hash_construct.digest("hex")
                         manifest[relative_output + "." + program.keyname + ".bisign"] = key_digest
 
                         console.log("File completed: " + relative_output + " with hash: " + hash)
