@@ -4,7 +4,7 @@
   "description": "SYNCON is the 1st RRFs modpack toolset designed to compile a release of the modpack.",
   "license": "MIT",
   "dependencies": {
-    "async": "^2.1.5",
+    "async": "^3.2.2",
     "commander": "^2.9.0",
     "deep-diff": "^0.3.4",
     "fs-extra": "^2.0.0",
